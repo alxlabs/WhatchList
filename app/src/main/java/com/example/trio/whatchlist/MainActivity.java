@@ -56,7 +56,6 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.Item
 
     private Parcelable layoutManagerSaveState;
     private String selectedCategory;
-    private String categorySelected;
 
     private LoaderManager.LoaderCallbacks<Cursor> loaderCallbacks;
     private Cursor favoriteData = null;
@@ -76,34 +75,45 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.Item
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setAdapter(mAdapter);
 
-        if(isWifiConnected() || isNetworkConnected()){
-           if(savedInstanceState != null) {
-               selectedCategory = savedInstanceState.getString(Constant.KEY_SELECTED_CATEGORY);
-               if (selectedCategory.equals(Constant.POPULAR)) {
-                   getSupportActionBar().setSubtitle(R.string.action_most_popular);
-               } else if (selectedCategory.equals(Constant.TOP_RATED)) {
-                   getSupportActionBar().setSubtitle(R.string.action_top_rated);
-               } else {
-                   getSupportActionBar().setSubtitle(R.string.action_favorites);
-               }
-               layoutManagerSaveState = savedInstanceState.getParcelable(Constant.LAYOUT_MANAGER);
-           } else {
-                //default
-               selectedCategory = Constant.POPULAR;
-               getSupportActionBar().setSubtitle(R.string.action_most_popular);
-           }
+        selectedCategory = Constant.FAVORITES;
+        getSupportActionBar().setSubtitle(R.string.action_favorites);
 
-        } else {
-            mRecyclerView.setVisibility(View.INVISIBLE);
-            mLinearNetworkRetry.setVisibility(View.VISIBLE);
-        }
+       if(savedInstanceState != null) {
+           selectedCategory = savedInstanceState.getString(Constant.KEY_SELECTED_CATEGORY);
+           layoutManagerSaveState = savedInstanceState.getParcelable(Constant.LAYOUT_MANAGER);
+       } else {
+            //default
+           selectedCategory = Constant.POPULAR;
+       }
+
+        showMovies(selectedCategory);
+    }
+
+    public int getIntSubtitle(String selectedCategory) {
+        if (selectedCategory.equals(Constant.POPULAR))
+            return R.string.action_most_popular;
+        else if (selectedCategory.equals(Constant.TOP_RATED))
+            return R.string.action_top_rated;
+        return R.string.action_favorites;
+    }
+
+    public void showMovies(String selectedCategory){
+        getSupportActionBar().setSubtitle(getIntSubtitle(selectedCategory));
 
         if (selectedCategory.equals(Constant.FAVORITES)) {
-            setCategory(selectedCategory);
+            mRecyclerView.setVisibility(View.VISIBLE);
+            mLinearNetworkRetry.setVisibility(View.INVISIBLE);
             setupLoader(this, getContentResolver());
             restartLoader(getSupportLoaderManager());
         } else {
-            loadData(selectedCategory);
+            if(isWifiConnected() || isNetworkConnected()) {
+                mRecyclerView.setVisibility(View.VISIBLE);
+                mLinearNetworkRetry.setVisibility(View.INVISIBLE);
+                loadData(selectedCategory);
+            } else {
+                mRecyclerView.setVisibility(View.INVISIBLE);
+                mLinearNetworkRetry.setVisibility(View.VISIBLE);
+            }
         }
     }
 
@@ -120,26 +130,18 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.Item
         switch (itemId) {
             case R.id.act_most_popular:
                 selectedCategory = Constant.POPULAR;
-                resetPage();
-                loadData(selectedCategory);
-                getSupportActionBar().setSubtitle(R.string.action_most_popular);
-                return true;
+                break;
             case R.id.act_top_rated:
                 selectedCategory = Constant.TOP_RATED;
-                resetPage();
-                loadData(selectedCategory);
-                getSupportActionBar().setSubtitle(R.string.action_top_rated);
-                return true;
+                break;
             case R.id.act_favorites:
                 selectedCategory = Constant.FAVORITES;
-                getSupportActionBar().setSubtitle(R.string.action_favorites);
-                setCategory(selectedCategory);
-                setupLoader(this, getContentResolver());
-                restartLoader(getSupportLoaderManager());
-                return true;
+                break;
             default:
                 return super.onOptionsItemSelected(item);
         }
+        showMovies(selectedCategory);
+        return true;
     }
 
     @Override
@@ -191,7 +193,7 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.Item
 
                     @Override
                     protected void onStartLoading() {
-                        if (categorySelected.equals(Constant.FAVORITES)) {
+                        if (selectedCategory.equals(Constant.FAVORITES)) {
                             forceLoad();
                         }
                     }
@@ -282,10 +284,6 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.Item
 
     private void resetPage() {
         currentPage = 1;
-    }
-
-    private void setCategory(String selectedCategory) {
-        categorySelected = selectedCategory;
     }
 
     private boolean isNetworkConnected() {
